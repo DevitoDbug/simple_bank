@@ -13,7 +13,7 @@ CREATE TABLE "entries" (
                            "created_at" timestamptz NOT NULL DEFAULT (now())
 );
 
-CREATE TABLE "transfares" (
+CREATE TABLE transfers (
                               "id" bigserial PRIMARY KEY,
                               "from_account_id" bigint NOT NULL,
                               "to_account_id" bigint NOT NULL,
@@ -25,18 +25,18 @@ CREATE INDEX ON "accounts" ("owner");
 
 CREATE INDEX ON "entries" ("account_id");
 
-CREATE INDEX ON "transfares" ("from_account_id");
+CREATE INDEX ON transfers ("from_account_id");
 
-CREATE INDEX ON "transfares" ("to_account_id");
+CREATE INDEX ON transfers ("to_account_id");
 
-CREATE INDEX ON "transfares" ("from_account_id", "to_account_id");
+CREATE INDEX ON transfers ("from_account_id", "to_account_id");
 
 COMMENT ON COLUMN "entries"."amount" IS 'It can be negative or positive';
 
-COMMENT ON COLUMN "transfares"."amount" IS 'It must be positive';
+COMMENT ON COLUMN transfers."amount" IS 'It must be positive';
 
 ALTER TABLE "entries" ADD FOREIGN KEY ("account_id") REFERENCES "accounts" ("id");
 
-ALTER TABLE "transfares" ADD FOREIGN KEY ("from_account_id") REFERENCES "accounts" ("id");
+ALTER TABLE transfers ADD FOREIGN KEY ("from_account_id") REFERENCES "accounts" ("id");
 
-ALTER TABLE "transfares" ADD FOREIGN KEY ("to_account_id") REFERENCES "accounts" ("id");
+ALTER TABLE transfers ADD FOREIGN KEY ("to_account_id") REFERENCES "accounts" ("id");
