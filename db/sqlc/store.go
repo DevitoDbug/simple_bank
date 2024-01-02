@@ -44,9 +44,9 @@ func (s *Store) execTx(ctx context.Context, fn func(queries *Queries) error) err
 }
 
 type TransferTxParams struct {
-	FromAccountId Account `json:"fromAccountId"`
-	ToAccountId   Account `json:"toAccountId"`
-	Amount        int64   `json:"amount"`
+	FromAccountId int64 `json:"fromAccountId"`
+	ToAccountId   int64 `json:"toAccountId"`
+	Amount        int64 `json:"amount"`
 }
 type TransferTxResult struct {
 	Transfer    Transfer `json:"transfer"`
@@ -62,4 +62,68 @@ type TransferTxResult struct {
 // Update account balance
 func (s *Store) TransferTx(ctx context.Context, arg TransferTxParams) (TransferTxResult, error) {
 
+	//updateSenderAccountParams := UpdateAccountParams{
+	//	ID:      arg.FromAccountId,
+	//	Balance: arg.ToAccountId,
+	//}
+	//
+	//updateRecipientAccountParams := UpdateAccountParams{
+	//	ID:      arg.FromAccountId,
+	//	Balance: arg.ToAccountId,
+	//}
+
+	var result TransferTxResult
+
+	createTransferParams := CreateTransferParams{
+		FromAccountID: arg.FromAccountId,
+		ToAccountID:   arg.ToAccountId,
+		Amount:        arg.Amount,
+	}
+
+	createSenderEntryParams := CreateEntryParams{
+		AccountID: arg.FromAccountId,
+		Amount:    -arg.Amount,
+	}
+
+	createRecipientEntryParams := CreateEntryParams{
+		AccountID: arg.ToAccountId,
+		Amount:    arg.Amount,
+	}
+
+	err := s.execTx(ctx, func(q *Queries) error {
+		var err error
+
+		// Creates a transfer record
+		result.Transfer, err = q.CreateTransfer(ctx, createTransferParams)
+		if err != nil {
+			return err
+		}
+
+		// Add account entries
+		result.FromEntry, err = q.CreateEntry(ctx, createSenderEntryParams)
+		if err != nil {
+			return err
+		}
+		result.ToEntry, err = q.CreateEntry(ctx, createRecipientEntryParams)
+		if err != nil {
+			return err
+		}
+
+		//TODO: update accounts(involves locking)
+		//Update account balance
+		//result.FromAccount, err = q.UpdateAccount(ctx, updateSenderAccountParams)
+		//if err != nil {
+		//	return err
+		//}
+		//result.ToAccount, err = q.UpdateAccount(ctx, updateRecipientAccountParams)
+		//if err != nil {
+		//	return err
+		//}
+
+		return nil
+	})
+	if err != nil {
+		return result, err
+	}
+	return result, nil
 }
