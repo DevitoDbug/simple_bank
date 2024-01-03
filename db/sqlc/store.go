@@ -61,17 +61,6 @@ type TransferTxResult struct {
 // Add account entries
 // Update account balance
 func (s *Store) TransferTx(ctx context.Context, arg TransferTxParams) (TransferTxResult, error) {
-
-	//updateSenderAccountParams := UpdateAccountParams{
-	//	ID:      arg.FromAccountId,
-	//	Balance: arg.ToAccountId,
-	//}
-	//
-	//updateRecipientAccountParams := UpdateAccountParams{
-	//	ID:      arg.FromAccountId,
-	//	Balance: arg.ToAccountId,
-	//}
-
 	var result TransferTxResult
 
 	createTransferParams := CreateTransferParams{
@@ -99,6 +88,7 @@ func (s *Store) TransferTx(ctx context.Context, arg TransferTxParams) (TransferT
 			return err
 		}
 
+		//Add to and from accounts
 		// Add account entries
 		result.FromEntry, err = q.CreateEntry(ctx, createSenderEntryParams)
 		if err != nil {
@@ -110,16 +100,6 @@ func (s *Store) TransferTx(ctx context.Context, arg TransferTxParams) (TransferT
 		}
 
 		//TODO: update accounts(involves locking)
-		//Update account balance
-		//result.FromAccount, err = q.UpdateAccount(ctx, updateSenderAccountParams)
-		//if err != nil {
-		//	return err
-		//}
-		//result.ToAccount, err = q.UpdateAccount(ctx, updateRecipientAccountParams)
-		//if err != nil {
-		//	return err
-		//}
-
 		return nil
 	})
 	if err != nil {
