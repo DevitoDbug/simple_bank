@@ -3,44 +3,23 @@ package db
 import (
 	"context"
 	"github.com/stretchr/testify/require"
-	"simple_bank/util"
 	"testing"
 )
 
-func createRandomAccountForTransaction(t *testing.T) Account {
-	arg := CreateAccountParams{
-		Owner:    util.RandomOwner(),
-		Balance:  1000,
-		Currency: util.RandomCurrency(),
-	}
-
-	account, err := testQueries.CreateAccount(context.Background(), arg)
-	require.NoError(t, err)
-	require.NotEmpty(t, account)
-
-	require.Equal(t, arg.Owner, account.Owner)
-	require.Equal(t, arg.Balance, account.Balance)
-	require.Equal(t, arg.Currency, account.Currency)
-
-	require.NotZero(t, account.ID) //Check if the id is set
-	require.NotZero(t, account.CreatedAt)
-
-	return account
-}
-
-func TestTransferTx(t *testing.T) {
+func TestTransferTx1(t *testing.T) {
 	store := NewStore(testDB)
 
 	//creating accounts
 	//initial account balances is 1000
-	account1 := createRandomAccountForTransaction(t)
-	account2 := createRandomAccountForTransaction(t)
+	account1 := createRandomAccount(t)
+	account2 := createRandomAccount(t)
+
+	noOfTransfers := 5
+	amount := int64(10)
 
 	transferResults := make(chan TransferTxResult)
 	transferResultsError := make(chan error)
 
-	noOfTransfers := 5
-	amount := int64(10)
 	for i := 0; i < noOfTransfers; i++ {
 		go func() {
 			//we cannot check the tests here because it is in a separate go routine form the one our test is running on
@@ -49,8 +28,9 @@ func TestTransferTx(t *testing.T) {
 				ToAccountId:   account2.ID,
 				Amount:        amount,
 			})
-			transferResults <- result
+
 			transferResultsError <- err
+			transferResults <- result
 		}()
 	}
 
@@ -69,6 +49,31 @@ func TestTransferTx(t *testing.T) {
 		require.Equal(t, account1.ID, transfer.FromAccountID)
 		require.Equal(t, account2.ID, transfer.ToAccountID)
 		require.Equal(t, amount, transfer.Amount)
-	}
+		require.NotZero(t, transfer.ID)
+		require.NotZero(t, transfer.CreatedAt)
 
+		_, err = store.GetTransfer(context.Background(), transfer.ID)
+		require.NoError(t, err)
+
+		//Checking the entries
+		//Checking the fromEntry
+		fromEntry := result.FromEntry
+		require.NotEmpty(t, fromEntry)
+		require.Equal(t, account1.ID, fromEntry.AccountID)
+		require.Equal(t, -amount, fromEntry.Amount)
+		require.NotZero(t, fromEntry.ID)
+		require.NotZero(t, fromEntry.CreatedAt)
+
+		_, err = store.GetEntry(context.Background(), fromEntry.ID)
+
+		//Checking the toEntry
+		toEntry := result.ToEntry
+		require.NotEmpty(t, toEntry)
+		require.Equal(t, account2.ID, toEntry.AccountID)
+		require.Equal(t, amount, toEntry.Amount)
+		require.NotZero(t, toEntry.ID)
+		require.NotZero(t, toEntry.CreatedAt)
+
+		_, err = store.GetEntry(context.Background(), toEntry.ID)
+	}
 }
