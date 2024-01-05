@@ -2,11 +2,12 @@ package db
 
 import (
 	"context"
+	"fmt"
 	"github.com/stretchr/testify/require"
 	"testing"
 )
 
-func TestTransferTx1(t *testing.T) {
+func TestTransferTx(t *testing.T) {
 	store := NewStore(testDB)
 
 	//creating accounts
@@ -20,6 +21,7 @@ func TestTransferTx1(t *testing.T) {
 	transferResults := make(chan TransferTxResult)
 	transferResultsError := make(chan error)
 
+	fmt.Println(">> Before transaction", account1.Balance, account2.Balance)
 	for i := 0; i < noOfTransfers; i++ {
 		go func() {
 			//we cannot check the tests here because it is in a separate go routine form the one our test is running on
@@ -35,6 +37,7 @@ func TestTransferTx1(t *testing.T) {
 	}
 
 	//Check for no error in any of the transactions
+	existed := make(map[int]bool)
 	for i := 0; i < noOfTransfers; i++ {
 		err := <-transferResultsError
 		require.NoError(t, err)
@@ -75,5 +78,46 @@ func TestTransferTx1(t *testing.T) {
 		require.NotZero(t, toEntry.CreatedAt)
 
 		_, err = store.GetEntry(context.Background(), toEntry.ID)
+
+		//Checking account
+		//Checking from account
+		fromAccount := result.FromAccount
+		require.NotEmpty(t, fromAccount)
+		require.Equal(t, account1.ID, fromAccount.ID)
+
+		//Checking to account
+		toAccount := result.ToAccount
+		require.NotEmpty(t, toAccount)
+		require.Equal(t, account2.ID, toAccount.ID)
+
+		//Checking account balances
+		fmt.Println(">> Before during", fromAccount.Balance, toAccount.Balance)
+
+		//Checking amount difference in account1
+		diff1 := account1.Balance - fromAccount.Balance
+		//Checking amount difference in account2
+		diff2 := toAccount.Balance - account2.Balance
+
+		require.Equal(t, diff2, diff1)
+		require.True(t, diff1 > 0)
+		require.True(t, diff1%amount == 0)
+
+		k := int(diff1 / amount)
+		require.True(t, k >= 1 && k <= noOfTransfers)
+		require.NotContains(t, existed, k)
+		existed[k] = true
 	}
+
+	//Check final updated balance
+	updatedAccount1, err := store.GetAccount(context.Background(), account1.ID)
+	require.NotEmpty(t, updatedAccount1)
+	require.NoError(t, err)
+	require.Equal(t, account1.Balance-amount*int64(noOfTransfers), updatedAccount1.Balance)
+
+	updatedAccount2, err := store.GetAccount(context.Background(), account2.ID)
+	require.NotEmpty(t, updatedAccount2)
+	require.NoError(t, err)
+	require.Equal(t, account2.Balance+amount*int64(noOfTransfers), updatedAccount2.Balance)
+
+	fmt.Println(">> Before transaction", updatedAccount1.Balance, updatedAccount2.Balance)
 }
