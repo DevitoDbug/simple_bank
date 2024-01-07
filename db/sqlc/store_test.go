@@ -23,9 +23,11 @@ func TestTransferTx(t *testing.T) {
 
 	fmt.Println(">> Before transaction", account1.Balance, account2.Balance)
 	for i := 0; i < noOfTransfers; i++ {
+		txName := fmt.Sprintf("tx %v", i+1)
 		go func() {
+			ctx := context.WithValue(context.Background(), txKey, txName)
 			//we cannot check the tests here because it is in a separate go routine form the one our test is running on
-			result, err := store.TransferTx(context.Background(), TransferTxParams{
+			result, err := store.TransferTx(ctx, TransferTxParams{
 				FromAccountId: account1.ID,
 				ToAccountId:   account2.ID,
 				Amount:        amount,
