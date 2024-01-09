@@ -15,7 +15,7 @@ func TestTransferTx(t *testing.T) {
 	account1 := createRandomAccount(t)
 	account2 := createRandomAccount(t)
 
-	noOfTransfers := 5
+	noOfTransfers := 100
 	amount := int64(10)
 
 	transferResults := make(chan TransferTxResult)

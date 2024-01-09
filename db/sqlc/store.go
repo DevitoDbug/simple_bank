@@ -85,7 +85,7 @@ func (s *Store) TransferTx(ctx context.Context, arg TransferTxParams) (TransferT
 		var err error
 
 		txName := ctx.Value(txKey)
-		fmt.Println(txName, ">> create transaction")
+		fmt.Println(txName, ">> create transfer")
 
 		// Creates a transfer record
 		result.Transfer, err = q.CreateTransfer(ctx, createTransferParams)
