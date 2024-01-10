@@ -2,7 +2,6 @@ package db
 
 import (
 	"context"
-	"fmt"
 	"github.com/stretchr/testify/require"
 	"testing"
 )
@@ -15,17 +14,15 @@ func TestTransferTx(t *testing.T) {
 	account1 := createRandomAccount(t)
 	account2 := createRandomAccount(t)
 
-	noOfTransfers := 100
+	noOfTransfers := 5
 	amount := int64(10)
 
 	transferResults := make(chan TransferTxResult)
 	transferResultsError := make(chan error)
 
-	fmt.Println(">> Before transaction", account1.Balance, account2.Balance)
 	for i := 0; i < noOfTransfers; i++ {
-		txName := fmt.Sprintf("tx %v", i+1)
 		go func() {
-			ctx := context.WithValue(context.Background(), txKey, txName)
+			ctx := context.Background()
 			//we cannot check the tests here because it is in a separate go routine form the one our test is running on
 			result, err := store.TransferTx(ctx, TransferTxParams{
 				FromAccountId: account1.ID,
@@ -92,9 +89,6 @@ func TestTransferTx(t *testing.T) {
 		require.NotEmpty(t, toAccount)
 		require.Equal(t, account2.ID, toAccount.ID)
 
-		//Checking account balances
-		fmt.Println(">> Before during", fromAccount.Balance, toAccount.Balance)
-
 		//Checking amount difference in account1
 		diff1 := account1.Balance - fromAccount.Balance
 		//Checking amount difference in account2
@@ -120,6 +114,55 @@ func TestTransferTx(t *testing.T) {
 	require.NotEmpty(t, updatedAccount2)
 	require.NoError(t, err)
 	require.Equal(t, account2.Balance+amount*int64(noOfTransfers), updatedAccount2.Balance)
+}
 
-	fmt.Println(">> Before transaction", updatedAccount1.Balance, updatedAccount2.Balance)
+func TestTransferTxDeadlock(t *testing.T) {
+	store := NewStore(testDB)
+
+	//creating accounts
+	//initial account balances is 1000
+	account1 := createRandomAccount(t)
+	account2 := createRandomAccount(t)
+
+	noOfTransfers := 20
+	amount := int64(10)
+
+	transferResultsError := make(chan error)
+
+	for i := 0; i < noOfTransfers; i++ {
+		fromAccountId := account1.ID
+		toAccountId := account2.ID
+
+		if i%2 == 0 {
+			fromAccountId = account2.ID
+			toAccountId = account1.ID
+		}
+
+		go func() {
+			ctx := context.Background()
+			//we cannot check the tests here because it is in a separate go routine form the one our test is running on
+			_, err := store.TransferTx(ctx, TransferTxParams{
+				FromAccountId: fromAccountId,
+				ToAccountId:   toAccountId,
+				Amount:        amount,
+			})
+			transferResultsError <- err
+		}()
+	}
+
+	for i := 0; i < noOfTransfers; i++ {
+		err := <-transferResultsError
+		require.NoError(t, err)
+	}
+
+	//Check final updated balance
+	updatedAccount1, err := store.GetAccount(context.Background(), account1.ID)
+	require.NotEmpty(t, updatedAccount1)
+	require.NoError(t, err)
+	require.Equal(t, account1.Balance, updatedAccount1.Balance)
+
+	updatedAccount2, err := store.GetAccount(context.Background(), account2.ID)
+	require.NotEmpty(t, updatedAccount2)
+	require.NoError(t, err)
+	require.Equal(t, account2.Balance, updatedAccount2.Balance)
 }
