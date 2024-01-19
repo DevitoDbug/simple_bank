@@ -34,7 +34,6 @@ func TestTransferTx(t *testing.T) {
 			transferResults <- result
 		}()
 	}
-
 	//Check for no error in any of the transactions
 	existed := make(map[int]bool)
 	for i := 0; i < noOfTransfers; i++ {
@@ -103,7 +102,6 @@ func TestTransferTx(t *testing.T) {
 		require.NotContains(t, existed, k)
 		existed[k] = true
 	}
-
 	//Check final updated balance
 	updatedAccount1, err := store.GetAccount(context.Background(), account1.ID)
 	require.NotEmpty(t, updatedAccount1)
