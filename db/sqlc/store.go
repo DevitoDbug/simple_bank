@@ -56,8 +56,6 @@ type TransferTxResult struct {
 	ToEntry     Entry    `json:"toEntry"`
 }
 
-var txKey = struct{}{}
-
 // TransferTx transfers money from one account to another account
 // Creates a transfer record
 // Add account entries
